@@ -8,15 +8,15 @@ import logging
 class rnn():
     def __init__(self, config):
         self.config = config
-        embedding_dim = config.embedding_dim
-        seq_length = config.seq_length
-        vocab_size = config.vocab_size
         self.sess = tf.Session(config=tf.ConfigProto(device_count={'gpu': 0}))
         self.input_x = tf.placeholder(tf.int32, [None, None], name = "input_x")
         self.input_y = tf.placeholder(tf.int32, [None], name = "input_y")
         self.sequence_lengths = tf.placeholder(tf.int32, shape = [None], name = "sequence_lengths" )
         self.dropout = tf.placeholder(tf.float32, name='keep_prob')
         self.num_classes = config.num_classes
+        self.embedding_dim = config.embedding_dim
+        self.seq_length = config.seq_length
+        self.vocab_size = config.vocab_size
         self.hidden_size_lstm = 64
         self.attention_size = 50
         self.mlp_num_units = 64
@@ -30,7 +30,7 @@ class rnn():
                 embed_matrix = tf.get_variable(
                         name = "_word_embeddings",
                         dtype = tf.float32,
-                        shape=[vocab_size, embedding_dim])
+                        shape=[self.vocab_size, self.embedding_dim])
                 self.embedding_trainable = True
             else:
                 embed_matrix = tf.Variable(
@@ -42,7 +42,7 @@ class rnn():
             word_embbeddings_lookup = tf.nn.embedding_lookup(embed_matrix,
                     self.input_x, name = "word_embedding");
             self.word_embeddings = tf.nn.dropout(word_embbeddings_lookup,
-                    self.dropout, name="word_embeddings" + self.domain)
+                    self.dropout, name="word_embeddings")
         #rnn layer
         with tf.variable_scope("bi-lstm"):
             cell_fw = tf.contrib.rnn.LSTMCell(self.hidden_size_lstm)
@@ -50,7 +50,7 @@ class rnn():
             (output_fw, output_bw), _ = tf.nn.bidirectional_dynamic_rnn(
                     cell_fw, cell_bw, self.word_embeddings,
                     sequence_length = self.sequence_lengths,
-                    dtype=tf.float32, scope="bi-lstm" + self.domain)
+                    dtype=tf.float32, scope="bi-lstm")
             output = tf.concat([output_fw, output_bw], axis=-1,
                     name = "lstm_concat")
             self.lstm_outputs = tf.nn.dropout(output, self.dropout,
@@ -62,9 +62,9 @@ class rnn():
             #sequence(每句话)的长度
             max_time = tf.shape(self.lstm_outputs, name = "max_time")[1]
             atten_size = self.attention_size
-            lstm_output = tf.reshape(self.lstm_outputs,[-1, 2 * hidden_size_lstm], name = "output_att")
+            lstm_output = tf.reshape(self.lstm_outputs,[-1, 2 * self.hidden_size_lstm], name = "output_att")
             W_omega = tf.Variable(tf.random_normal(\
-                [2 * self.hidden_size_lstm], stddev = 0.1, 
+                [2 * self.hidden_size_lstm, atten_size], stddev = 0.1, 
                 dtype = tf.float32), name = "w_omega")
             b_omega = tf.Variable(tf.random_normal(\
                 [atten_size], stddev = 0.1,\
@@ -102,7 +102,7 @@ class rnn():
             self.y = tf.argmax(self.logits, 1)
             self.score = tf.nn.softmax(self.logits)
         with tf.variable_scope("loss_op"):
-            label = tf.one_hot(self.input_y, self.config.num_classess,
+            label = tf.one_hot(self.input_y, self.config.num_classes,
                     on_value=1, off_value=0)
             losses = tf.nn.softmax_cross_entropy_with_logits(
                     labels=label,logits=self.logits)

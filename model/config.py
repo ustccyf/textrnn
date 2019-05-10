@@ -32,8 +32,8 @@ def load_data(filename):
 
 class Config():
     def __init__(self):
-        embedding_dim = 64
-        seq_length = 600
+        self.embedding_dim = 64
+        self.seq_length = 600
         self.train_file_name = "data/train.data"
         self.test_file_name = "data/test.data"
         self.dev_file_name = "data/dev.data"
@@ -41,11 +41,12 @@ class Config():
                 = load_data(self.train_file_name)
         self.vocab_size = len(self.vocab2idx)
         self.num_classes = len(self.idx2label)
-        hidden_dim = 128
-        rnn = 'gru'
+        self.hidden_dim = 128
+        self.rnn = 'lstm'
         self.dropout_keep_prob = 0.8
         self.learning_rate = 0.001
         self.batch_size = 10
+        self.embeddings = None
         self.num_epochs = 100
         self.attention_size = 50
         self.embedding_dim = 100
